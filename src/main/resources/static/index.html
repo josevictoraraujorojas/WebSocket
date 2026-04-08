@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoramento de Clima</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.0/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            gap: 40px;
+        }
+
+        .box {
+            border: 1px solid #ccc;
+            padding: 15px;
+            width: 45%;
+            border-radius: 8px;
+        }
+
+        .auto {
+            background-color: #f0f8ff;
+        }
+
+        .user {
+            background-color: #f5fff0;
+        }
+
+        .message {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Monitoramento de Clima em Tempo Real</h1>
+
+<div>
+    <input type="text" id="nome" placeholder="Nome da Cidade">
+    <input type="text" id="latitude" placeholder="Latitude">
+    <input type="text" id="longitude" placeholder="Longitude">
+    <button onclick="sendMessage()">Enviar</button>
+</div>
+
+<br>
+
+<div class="container">
+
+
+    <div class="box user">
+        <h2>Pedidos do Usuário</h2>
+        <div id="userMessages"></div>
+    </div>
+
+    <div class="box auto">
+        <h2>Atualizações Automáticas (5s)</h2>
+        <div id="autoMessages"></div>
+    </div>
+
+</div>
+
+<script>
+    var stompClient = null;
+
+    function connect() {
+        var socket = new SockJS('/api');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Conectado: ' + frame);
+
+            // 🔹 mensagens do usuário
+            stompClient.subscribe('/topic/clima/usuario', function (msg) {
+                showUserMessage(JSON.parse(msg.body));
+            });
+
+            // 🔹 mensagens automáticas
+            stompClient.subscribe('/topic/clima/auto', function (msg) {
+                showAutoMessage(JSON.parse(msg.body));
+            });
+        });
+    }
+
+    function sendMessage() {
+        var nome = document.getElementById('nome').value;
+        var lat = parseFloat(document.getElementById('latitude').value);
+        var lon = parseFloat(document.getElementById('longitude').value);
+
+        stompClient.send("/app/sendMessage", {}, JSON.stringify({
+            nome: nome,
+            lat: lat,
+            lon: lon
+        }));
+
+        // limpar campos
+        document.getElementById('nome').value = "";
+        document.getElementById('latitude').value = "";
+        document.getElementById('longitude').value = "";
+    }
+
+    function showUserMessage(message) {
+        var container = document.getElementById('userMessages');
+        var el = document.createElement('div');
+        el.className = "message";
+
+        el.innerText =
+            "Cidade: " + message.cidade +
+            " | Temp: " + message.temperatura + "°C" +
+            " | " + message.horario;
+
+        if (message.temperatura<18){
+            el.style.background =  "blue";
+        }else if (message.temperatura>30){
+            el.style.background =  "red";
+        }else {
+            el.style.background =  "green";
+        }
+
+        container.appendChild(el);
+    }
+
+    function showAutoMessage(message) {
+        var container = document.getElementById('autoMessages');
+        var el = document.createElement('div');
+        el.className = "message";
+
+        el.innerText =
+            "Cidade: " + message.cidade +
+            " | Temp: " + message.temperatura + "°C" +
+            " | " + message.horario;
+
+        if (message.temperatura<18){
+            el.style.background =  "blue";
+        }else if (message.temperatura>30){
+            el.style.background =  "red";
+        }else {
+            el.style.background =  "green";
+        }
+
+        container.appendChild(el);
+    }
+
+    window.onload = connect;
+</script>
+
+</body>
+</html>
